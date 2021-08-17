@@ -45,7 +45,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 界面**更加人性化**，更加**容易上手**。  
 允许您**决定命令参数**来提高打包和转换的速度。  
 程序本体**轻量化**。  
-**支持解包 boot 和 recovery**。
+**支持解包 boot 和 recovery**。  
 理论(只是理论)可以**移植到 Windows 代替 RNA**。  
 使用**完全免费**。无论是移植到哪个平台都**完全免费**。  
 (请不要违反 LGPLv3。)
