@@ -12,7 +12,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 在控制台输入以下内容：
 
 ```
-. <(curl -L git.io/startdnan.sh)
+. <(curl -L git.io/J0qTU)
 ```
 
 ## Termux
@@ -21,7 +21,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 请在**虚拟容器内控制台**输入以下内容：
 
 ```
-. <(curl -L git.io/startdnan.sh)
+. <(curl -L git.io/J0qTU)
 ```
 
 # 相比 DNA 的缺点
