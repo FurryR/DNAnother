@@ -1,0 +1,21 @@
+DNAnother - 一个开源的 DNA 替代品
+版本:v1.0.0-stable
+项目地址:https://github.com/awathefox/DNAnother
+This program was under the LGPLv2.1 license.
+Copyright (c) 2021 awathefox.
+DNAnother 的诞生离不开这些软件包:
+
+sdat2img
+img2sdat
+brotli
+zip
+unzip
+dialog
+python3
+git
+android-sdk-libsparse-utils
+abootimg
+img2simg
+simg2img
+
+感谢您的使用。
