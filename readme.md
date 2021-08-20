@@ -12,7 +12,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 在控制台输入以下内容：
 
 ```
-. <(curl -L git.io/J0qTU)
+. <(curl -L git.io/dnanother.sh)
 ```
 
 ## Termux
@@ -21,7 +21,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 请在**虚拟容器内控制台**输入以下内容：
 
 ```
-. <(curl -L git.io/J0qTU)
+. <(curl -L git.io/dnanother.sh)
 ```
 
 # 相比 DNA 的缺点
@@ -33,10 +33,9 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 **可能不支持线刷包**。我们仍支持解包 img，但可能无法支持 super.img 的解包。
 **暂时不支持**高级操作，例如：
 
-- 解包 payload.bin
 - 合并分段 dat
 - 分解 TWRP 备份文件  
-  如果您实在是非常需要这些功能，我推荐您去使用付费且闭源的 DNA 和 RNA。
+  如果您实在是非常需要这些功能，我推荐您去使用闭源的 DNA 和 付费且闭源的 RNA。
 
 # 相比 DNA 的优点
 
@@ -45,7 +44,7 @@ This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGP
 界面**更加人性化**，更加**容易上手**。  
 允许您**决定命令参数**来提高打包和转换的速度。  
 程序本体**轻量化**。  
-**支持解包 boot 和 recovery**。  
+**支持解包 boot 和 recovery**。
 理论(只是理论)可以**移植到 Windows 代替 RNA**。  
 使用**完全免费**。无论是移植到哪个平台都**完全免费**。  
 (请不要违反 LGPLv3。)
@@ -81,4 +80,5 @@ DNAnother 的诞生离不开这些软件包。
 [android-sdk-libsparse-utils](https://android.googlesource.com/platform/system/core)  
 [abootimg](http://gitorious.org/ac100/abootimg)  
 [img2simg](https://android.googlesource.com/platform/system/core)  
-[simg2img](https://android.googlesource.com/platform/system/core)
+[simg2img](https://android.googlesource.com/platform/system/core)  
+[payload_dumper](https://github.com/vm03/payload_dumper)

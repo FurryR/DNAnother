@@ -1,5 +1,5 @@
 DNAnother - 一个开源的 DNA 替代品
-版本:v1.0.0-stable
+版本:v1.0.1-beta
 项目地址:https://github.com/awathefox/DNAnother
 This program was under the LGPLv2.1 license.
 Copyright (c) 2021 awathefox.
@@ -17,5 +17,6 @@ android-sdk-libsparse-utils
 abootimg
 img2simg
 simg2img
+payload_dumper
 
 感谢您的使用。

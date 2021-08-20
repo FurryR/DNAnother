@@ -33,7 +33,7 @@ def dselect(title,dir=""):
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def mulchoice(run): #run=['title','menu',['title','obj'],['title','obj'],...]
-  cmd="dialog --backtitle \""+run[0]+"\" --checklist \""+run[1]+"\" 0 0 0 "
+  cmd="dialog --title \""+run[0]+"\" --checklist \""+run[1]+"\" 0 0 "+str(len(run[2:]) if len(run[2:]) < 5 else 5)+" "
   s=2
   while s < len(run):
     cmd+=run[s][0]+" \""+run[s][1]+"\" "+str(s-1)+" "
@@ -94,7 +94,7 @@ def unpackimg(source,output):
     os.chdir("temp/abootimg")
     os.system("abootimg -x abootimg.tmp.img >/dev/null")
     os.remove("abootimg.tmp.img")
-    os.system("abootimg-unpack-initrd initrd.img >/dev/null")
+    os.system("abootimg-unpack-initrd initrd.img 2>/dev/null")
     os.chdir("../..")
     os.system("cp -r temp/abootimg/. "+output)
     shutil.rmtree("temp/abootimg")
@@ -102,7 +102,7 @@ def unpackimg(source,output):
     if gettype(source).startswith("Android sparse image"):
       os.system("simg2img {0} temp/output.tmp.img > /dev/null")
       source="temp/output.tmp.img"
-    os.system("mount {0} mount".format(source))
+    os.system("mount -o ro {0} mount".format(source))
     os.system("cp -r mount/. {0}".format(output))
     os.system("umount mount")
     if source=="temp/output.tmp.img":
@@ -134,6 +134,21 @@ def packimg(source,output,sparseimg=False):
     return os.path.getsize(output) #返回sparse_img的size 用于更新
 #img<->dir end
 
+#payload->imgs begin
+def payload_partitions(file):
+  x=subprocess.run("python3 {0}/bin/payload_dumper/partget.py {1}".format(sys.path[0],file),shell=True,stdout=subprocess.PIPE)
+  r=x.stdout.decode().split("\n")
+  for i in range(len(r)):
+    if r[i]=='':
+      del r[i]
+  return r
+def extract_payload(payload,output,images=None):
+  if images==None:
+    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2}".format(sys.path[0],payload,output))
+  else:
+    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2} --images {3}".format(sys.path[0],payload,output,",".join(images)))
+#payload->imgs end
+
 #convert end
 
 #temp begin
@@ -161,13 +176,6 @@ def dirsize(dir):
 #temp end
 zip_ext_arg=""
 bro_ext_arg="-1"
-def getlistline(source,line):
-  with open(source) as f:
-    while f.readable():
-      x=f.readline()
-      if x.startswith(line):
-        return x
-  return ""
 def convert(path,op):
   global bro_ext_arg
   global zip_ext_arg
@@ -219,7 +227,9 @@ def convert(path,op):
     if path.startswith('conv/'):
       shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
     return 'conv/'
-  pass
+  elif op=='extract_payload':
+    extract_payload(path,"conv/")
+    return 'conv/'
 def highconv():
   infobox("请稍等","正在预准备")
   cleartemp()
@@ -251,8 +261,12 @@ def highconv():
         'dir':['cp'],
         'img':['packimg'],
       },
+      'bin':{
+        'img':['extract_payload'],
+        'bin':['cp']
+      }
     }
-    x=inputbox("高级转换","输入起始和目标，将自动计算转换路径。\\n支持的格式:br,dat,img,dir\\n语法:原格式->目标格式")
+    x=inputbox("高级转换","输入起始和目标，将自动计算转换路径。\\n支持的格式:br,dat,img,dir,bin\\n语法:原格式->目标格式")
     if x[0]!=CHOICE_OK:
       return None
     else:
@@ -302,15 +316,16 @@ def rom():
         infobox("DNAnother","正在列出清单")
         for o in os.listdir("base"):
           s=list(os.path.splitext(o))[1][1:]
+          w=gettype("base/"+o)
           if not os.path.isfile("base/"+o):
             continue
-          elif o.endswith(".img") and gettype("base/"+o).startswith("Android bootimg"):
+          elif o.endswith(".img") and (w.startswith("Android bootimg") or w.startswith("Android sparse image") or w.startswith("Linux rev 1.0 ext2 filesystem data")):
             f.append([o,s])
           elif o.endswith(".br"):
             f.append([o,s])
           elif o.endswith(".dat") and not o.endswith(".patch.dat"):
             f.append([o,s])
-          elif o.endswith(".img") and gettype("base/"+o).startswith("Android sparse image"):
+          elif o.endswith(".bin"):
             f.append([o,s])
         if len(f)<3:
           msg("DNAnother","没有可以用于解压的项目。")
@@ -377,6 +392,40 @@ def rom():
               progress(i,"正在执行 unpackimg [1/1]".format(i),round(1/2*100))
               unpackimg("base/{0}".format(i),"target/{0}".format(i.split(".")[0]))
               progress(i,"过程完成",100)
+            elif z[1]==".bin":
+              if yesno("警告 - "+i,"确实要解包payload.bin吗？\\n打包操作将无法进行或生成错误。")!=CHOICE_OK:
+                continue
+              infobox(i,"正在列出分区...")
+              a=payload_partitions("base/"+i)
+              p=[
+                i,
+                "请选择要解压的分区",
+              ]
+              for d in range(len(a)):
+                p.append([str(d+1),a[d]])
+              p=mulchoice(p)
+              if p[0]==CHOICE_OK:
+                p=p[1]
+                infobox(i,"正在检查情报...")
+                fin=[]
+                for l in p:
+                  fin.append(a[int(l)-1])
+                progress(i,"正在执行 extract_payload [1/1]",100)
+                extract_payload("base/"+i,"temp/",fin)
+                for g in os.listdir("temp/"):
+                  c=gettype("temp/"+g)
+                  if c.startswith("Android sparse image") or c.startswith("Android bootimg") or c.startswith("Linux rev 1.0 ext2 filesystem data"):
+                    progress(i+"->"+g,"正在执行 unpackimg [1/1]",50)
+                    unpackimg("temp/{0}".format(g),"target/{0}".format(g.split(".")[0]))
+                    progress(i+"->"+g,"正在执行 unpackimg [1/1]",100)
+                    os.remove("temp/{0}".format(g))
+                    progress(i+"->"+g,"过程完成",100)
+                  else:
+                    progress(i+"->"+g,"正在执行 cp [1/1]",50)
+                    shutil.copy("temp/{0}".format(g),"target/")
+                    progress(i+"->"+g,"正在执行 cp [1/1]",100)
+                    os.remove("temp/{0}".format(g))
+                    progress(i+"->"+g,"过程完成",100)
             else:
               fail=True
               break
@@ -407,31 +456,19 @@ def rom():
         infobox("DNAnother","正在预准备")
         cleartemp()
         if yesno("警告","是否开始打包？\\n操作可能需要5分钟或更久。")==CHOICE_OK:
-          x=[
-            "remove_all_groups\n",
-            getlistline("base/dynamic_partitions_op_list","add_group main")+"\n"
-          ]
           progress("DNAnother","准备中",0)
           for i in os.listdir("target"):
-            if not os.path.exists("target/"+i) or not os.path.isdir("target/"+i) or os.path.exists("target/"+i+"/bootimg.cfg"):
-              continue
-            x.append("add "+i+" main\n")
-          for i in os.listdir("target"):
-            if os.path.isfile("target/"+i):
-              continue
             progress(i,"正在检查信息".format(i),0)
-            if (not os.path.exists("target/"+i)) or (not os.path.isdir("target/"+i)):
-              progress(i,"正在执行 cp [1/1]".format(i),100)
-              os.system("cp base/{0}.new.dat.br base/{0}.patch.dat base/{0}.transfer.list temp/".format(i))
-              x.append(getlistline("base/dynamic_partitions_op_list","add "+i)+"\n")
+            if os.path.isfile("target/"+i):
+              progress(i,"正在执行 cp [1/1]",100)
+              os.system("cp target/"+i+" temp/")
             elif os.path.exists("target/"+i+"/bootimg.cfg"):
               progress(i,"正在执行 packimg [1/1]".format(i),100)
               packimg("target/{0}".format(i),"temp/{0}.img".format(i))
               progress(i,"完成".format(i),100)
             else:
               progress(i,"正在执行 packimg [1/3]".format(i),round(1/6*100))
-              a=packimg("target/{0}".format(i),"temp/{0}.img".format(i),True)
-              x.append("resize "+i+" "+str(a)+"\n")
+              packimg("target/{0}".format(i),"temp/{0}.img".format(i),True)
               progress(i,"正在执行 img2dat [2/3]".format(i),round(2/6*100))
               img2dat("temp/{0}.img".format(i),"temp",i)
               progress(i,"正在执行 img2dat [2/3]".format(i),round(3/6*100))
@@ -441,15 +478,15 @@ def rom():
               progress(i,"正在执行 dat2br [3/3]".format(i),round(5/6*100))
               os.remove("temp/{0}.new.dat".format(i))
               progress(i,"完成".format(i),100)
-          with open("temp/dynamic_partitions_op_list","w") as q:
-            q.writelines(x)
           progress("DNAnother","准备中",0)
           progress("DNAnother","复制文件...",50)
-          os.system("cp -r base/. temp/ &>/dev/null")
+          os.system("cp -r base/* temp")
           progress("DNAnother","复制完成...",50)
           progress("DNAnother","准备中",0)
           progress("DNAnother","打包中",0)
-          os.system("zip update.zip -q temp/* "+zip_ext_arg)
+          os.chdir("temp")
+          os.system("zip ../update.zip -rq * "+zip_ext_arg)
+          os.chdir("..")
           progress("DNAnother","打包完成",100)
           infobox("DNAnother","正在清理临时文件...")
           cleartemp()
