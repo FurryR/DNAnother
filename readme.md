@@ -3,7 +3,7 @@
 欢迎使用 DNAnother!这是一个个人开发的，开源的[DNA](https://gitee.com/sharpeter/DNA)替代品。  
 目前只支持 Aonly 分区。我们将努力尝试支持 A/B 式分区。  
 DNAnother 比 DNA 更加人性化，同时兼顾了易用性。您可以通过安装功能读取他人模板来快速完成 ROM！  
-This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGPLv3**开源协议。
+This program was under the **LGPLv2.1** Open-Source License.此程序基于**LGPLv2.1**开源协议。
 
 # 初次使用
 
