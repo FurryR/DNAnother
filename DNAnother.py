@@ -29,7 +29,7 @@ def fselect(title,dir=""):
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def dselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 0 0"
+  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 8 50"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def mulchoice(run): #run=['title','menu',['title','obj'],['title','obj'],...]
