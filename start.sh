@@ -9,4 +9,4 @@ sudo pip3 install common protobuf six bsdiff4 lzma
 echo "正在下载组件..."
 git clone https://github.com/awathefox/DNAnother.git
 cd DNAnother
-sudo python3 run.py
+sudo python3 DNAnother.py
