@@ -25,7 +25,7 @@ def textbox(title,file):
   os.system(cmd)
   return
 def fselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 0 0"
+  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 8 50"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def dselect(title,dir=""):
