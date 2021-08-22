@@ -25,11 +25,11 @@ def textbox(title,file):
   os.system(cmd)
   return
 def fselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 8 50"
+  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 20 50"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def dselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 8 50"
+  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 20 50"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def mulchoice(run): #run=['title','menu',['title','obj'],['title','obj'],...]
@@ -122,10 +122,7 @@ def packimg(source,output,sparseimg=False):
     return os.path.getsize(output)
   else:
     os.system("dd if=/dev/zero of=temp/output.tmp.img bs=GiB count={1} 2>/dev/null".format(output,math.ceil(dirsize(source)*1.1/1024/1024/1024)))
-    os.system("mkfs.ext4 temp/output.tmp.img >/dev/null".format(output))
-    os.system("mount -o rw temp/output.tmp.img mount".format(output))
-    os.system("cp -r {0}/. mount".format(source))
-    os.system("umount mount")
+    os.system("mkfs.ext4 -d {0} temp/output.tmp.img >/dev/null".format(source))
     if sparseimg:
       os.system("img2simg temp/output.tmp.img {0}".format(output))
       os.remove("temp/output.tmp.img")
@@ -144,9 +141,9 @@ def payload_partitions(file):
   return r
 def extract_payload(payload,output,images=None):
   if images==None:
-    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2}".format(sys.path[0],payload,output))
+    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2} > /dev/null".format(sys.path[0],payload,output))
   else:
-    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2} --images {3}".format(sys.path[0],payload,output,",".join(images)))
+    os.system("python3 {0}/bin/payload_dumper/payload_dumper.py {1} --out {2} --images {3} > /dev/null".format(sys.path[0],payload,output,",".join(images)))
 #payload->imgs end
 
 #convert end
