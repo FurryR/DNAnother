@@ -480,7 +480,7 @@ def rom():
               progress(i,"完成".format(i),100)
           progress("DNAnother","准备中",0)
           progress("DNAnother","复制文件...",50)
-          os.system("cp -r base/* temp")
+          os.system("cp -rn base/* temp")
           progress("DNAnother","复制完成...",50)
           progress("DNAnother","准备中",0)
           progress("DNAnother","打包中",0)
