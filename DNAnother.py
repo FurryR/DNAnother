@@ -7,6 +7,7 @@ import subprocess
 import sys
 import shutil
 import math
+import json
 #dialog begin
 def choice(run,default=""): # run=['title','menu',['title','obj'],['title','obj'],...]
   cmd="dialog --title \""+run[0]+"\" --default-item \""+default+"\" --menu \""+run[1]+"\" 0 0 0 "
@@ -25,11 +26,11 @@ def textbox(title,file):
   os.system(cmd)
   return
 def fselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 20 50"
+  cmd="dialog --title \""+title+"\" --fselect \""+dir+"\" 10 10"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def dselect(title,dir=""):
-  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 20 50"
+  cmd="dialog --title \""+title+"\" --dselect \""+dir+"\" 10 10"
   x=subprocess.run(cmd,stderr=subprocess.PIPE,shell=True)
   return [x.returncode,x.stderr.decode()]
 def mulchoice(run): #run=['title','menu',['title','obj'],['title','obj'],...]
@@ -52,8 +53,8 @@ def progress(title,msg,percent):
   cmd="echo "+str(percent)+" | dialog --title \""+title+"\" --gauge \""+msg+"\" 10 50 "+str(percent)
   os.system(cmd)
   return
-def yesno(title,msg):
-  cmd="dialog --title \""+title+"\" --yesno \""+msg+"\" 0 0"
+def yesno(title,msg,yesbutton="是",nobutton="否"):
+  cmd="dialog --title \""+title+"\" --yes-label \""+yesbutton+"\" --no-label \""+nobutton+"\" --yesno \""+msg+"\" 0 0"
   return os.system(cmd)
 def exitmenu():
   os.system("clear")
@@ -75,8 +76,13 @@ def dat2br(source,output,ext_arg):
 #br<->dat end
 
 #dat<->img begin
-def dat2img(list,source,output):
-  os.system("python3 {0}/bin/sdat2img/sdat2img.py {1} {2} {3} >/dev/null".format(sys.path[0],list,source,output))
+def dat2img(list,source,output,sparse=False):
+  if sparse:
+    os.system("python3 {0}/bin/sdat2img/sdat2img.py {1} {2} temp/output.tmp.img >/dev/null".format(sys.path[0],list,source))
+    os.system("img2simg temp/output.tmp.img {0}".format(output))
+    os.remove("temp/output.tmp.img")
+  else:
+    os.system("python3 {0}/bin/sdat2img/sdat2img.py {1} {2} {3} >/dev/null".format(sys.path[0],list,source,output))
 def img2dat(source,output,prefix):
   if gettype(source).startswith("Android sparse image"):
     os.system("python3 {0}/bin/img2sdat/img2sdat.py -v 4 {1} -p {2} -o {3} >/dev/null".format(sys.path[0],source,prefix,output))
@@ -96,8 +102,7 @@ def unpackimg(source,output):
     os.remove("abootimg.tmp.img")
     os.system("abootimg-unpack-initrd initrd.img 2>/dev/null")
     os.chdir("../..")
-    os.system("cp -r temp/abootimg/. "+output)
-    shutil.rmtree("temp/abootimg")
+    os.system("mv -f temp/abootimg/. "+output)
   else:
     if gettype(source).startswith("Android sparse image"):
       os.system("simg2img {0} temp/output.tmp.img > /dev/null")
@@ -107,7 +112,8 @@ def unpackimg(source,output):
     os.system("umount mount")
     if source=="temp/output.tmp.img":
       os.remove(source)
-def packimg(source,output,sparseimg=False):
+  return os.path.getsize(source)
+def packimg(source,output,size,uuid,sparseimg=False):
   if os.path.exists(source+"/bootimg.cfg"):
     os.system("cp -r "+source+" temp/abootimg")
     os.chdir("temp/abootimg")
@@ -119,16 +125,15 @@ def packimg(source,output,sparseimg=False):
     os.chdir("../..")
     shutil.copyfile("temp/abootimg/abootimg.tmp.img",output)
     shutil.rmtree("temp/abootimg")
-    return os.path.getsize(output)
   else:
-    os.system("dd if=/dev/zero of=temp/output.tmp.img bs=GiB count={1} 2>/dev/null".format(output,math.ceil(dirsize(source)*1.1/1024/1024/1024)))
-    os.system("mkfs.ext4 -d {0} temp/output.tmp.img >/dev/null".format(source))
+    os.system("dd if=/dev/zero of=temp/output.tmp.img bs={1}c count=1 2>/dev/null".format(output,size))
+    os.system("mkfs.ext2 -L "+source.split("/")[-1]+" -U "+uuid+" -O large_file,huge_file,extent,uninit_bg,dir_nlink -d {0} temp/output.tmp.img >/dev/null".format(source))
     if sparseimg:
       os.system("img2simg temp/output.tmp.img {0}".format(output))
       os.remove("temp/output.tmp.img")
     else:
       shutil.move("temp/output.tmp.img",output)
-    return os.path.getsize(output) #返回sparse_img的size 用于更新
+  return os.path.getsize(output) #返回sparse_img的size 用于更新
 #img<->dir end
 
 #payload->imgs begin
@@ -158,6 +163,7 @@ def cleartarget():
 def clearconv():
   shutil.rmtree("conv/",True)
   os.mkdir("conv")
+'''
 def dirsize(dir):
   size=0
   for root,dirs,files in os.walk(dir):
@@ -170,6 +176,7 @@ def dirsize(dir):
       elif os.path.isfile(f):
         size+=os.path.getsize(f)
   return size
+'''
 #temp end
 zip_ext_arg=""
 bro_ext_arg="-1"
@@ -193,7 +200,7 @@ def convert(path,op):
           return ''
       elif os.path.exists(s[1]) and os.path.isfile(s[1]) and s[1].endswith(".list"):
         infobox("高级转换","正在处理文件,请稍等...")
-        dat2img(s[1],path,'conv/output.img')
+        dat2img(s[1],path,'conv/output.img',True)
         if path.startswith('conv/'):
           shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
         return 'conv/output.img'
@@ -210,10 +217,20 @@ def convert(path,op):
       shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
     return 'conv/output.new.dat.br'
   elif op=='packimg':
-    packimg(path,'conv/output.img',True)
-    if path.startswith('conv/'):
-      shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
-    return 'conv/output.img'
+    while 1:
+      s=inputbox("高级转换","您需要手动输入镜像大小和uuid,以空格分割。\\n您可以参照size.json，或输入打包前system.img的大小。")
+      if s[0]!=CHOICE_OK:
+        if yesno("高级转换","确实要取消转换吗?")==CHOICE_OK:
+          clearconv()
+          return ''
+      elif len(s[1].split(" "))==2 and s[1].split(" ")[0].isdigit() and int(s[1].split(" ")[0])>=0 and len(s[1].split(" ")[1])==36:
+        infobox("高级转换","正在处理文件,请稍等...")
+        packimg(path,'conv/output.img',int(s[1].split(" ")[0]),s[1].split(" ")[1],True)
+        if path.startswith('conv/'):
+          shutil.rmtree(path) if os.path.isdir(path) else os.remove(path)
+        return 'conv/output.img'
+      else:
+        msg("高级转换","数据不合法。")
   elif op=='unpackimg':
     unpackimg(path,'conv/')
     if path.startswith('conv/'):
@@ -294,7 +311,7 @@ def rom():
   if os.path.exists("base") and os.path.isdir("base"):
     while 1:
       ch=choice([
-        "选择",
+        "DNAnother v1.0.2-alpha",
         "选择您要对这个项目进行的操作。",
         ["1","解压"],
         ["2","安装"],
@@ -334,8 +351,20 @@ def rom():
           x=x[1]
           fail=False
           progress("DNAnother","检查清单中",0)
+          if os.path.exists("target/size.json") and os.path.isfile("target/size.json"):
+            with open("target/size.json") as f:
+              sizetable=json.loads(f.read())
+          else:
+            sizetable={}
           for i in x:
             z=os.path.splitext(i)
+            if os.path.exists("target/{0}".format(i.split(".")[0])):
+              if yesno(i,"重新解包将会删除已经解包的内容。\\n就算这样也要继续吗？")!=CHOICE_OK:
+                progress(i,"过程被跳过",100)
+                continue
+              else:
+                progress(i,"正在删除文件...",0)
+                shutil.rmtree("target/{i}".format(i.split(".")[0]),True)
             if z[1]==".br":
               progress(i,"正在执行 br2dat [1/3]",round(1/6*100))
               br2dat("base/{0}".format(i),"temp/{0}.tmp.dat".format(i))
@@ -359,7 +388,9 @@ def rom():
               progress(i,"正在执行 dat2img [2/3]",round(3/6*100))
               os.remove("temp/{0}.tmp.dat".format(i))
               progress(i,"正在执行 unpackimg [3/3]".format(i),round(4/6*100))
-              unpackimg("temp/{0}.tmp.img".format(i),"target/{0}".format(i.split(".")[0]))
+              sizetable[i.split(".")[0]]=[]
+              sizetable[i.split(".")[0]].append(unpackimg("temp/{0}.tmp.img".format(i),"target/{0}".format(i.split(".")[0])))
+              sizetable[i.split(".")[0]].append(gettype("temp/{0}.tmp.img".format(i)).split(",")[1][6:])
               progress(i,"正在执行 unpackimg [3/3]",round(5/6*100))
               os.remove("temp/{0}.tmp.img".format(i))
               progress(i,"过程完成",100)
@@ -381,17 +412,28 @@ def rom():
                 else:
                   msg(i,"无法读取文件。")
               progress(i,"正在执行 unpackimg [2/2]".format(i),round(2/4*100))
-              unpackimg("temp/{0}.tmp.img".format(i),"target/{0}".format(i.split(".")[0]))
+              sizetable[i.split(".")[0]]=[]
+              sizetable[i.split(".")[0]].append(unpackimg("temp/{0}.tmp.img".format(i),"target/{0}".format(i.split(".")[0])))
+              sizetable[i.split(".")[0]].append(gettype("temp/{0}.tmp.img".format(i)).split(",")[1][6:])
               progress(i,"正在执行 unpackimg [2/2]",round(3/4*100))
               os.remove("temp/{0}.tmp.img".format(i))
               progress(i,"过程完成",100)
             elif z[1]==".img":
               progress(i,"正在执行 unpackimg [1/1]".format(i),round(1/2*100))
-              unpackimg("base/{0}".format(i),"target/{0}".format(i.split(".")[0]))
+              sizetable[i.split(".")[0]]=[]
+              sizetable[i.split(".")[0]].append(unpackimg("base/{0}".format(i),"target/{0}".format(i.split(".")[0])))
+              sizetable[i.split(".")[0]].append(gettype("base/{0}".format(i)).split(",")[1][6:])
               progress(i,"过程完成",100)
             elif z[1]==".bin":
               if yesno("警告 - "+i,"确实要解包payload.bin吗？\\n打包操作将无法进行或生成错误。")!=CHOICE_OK:
                 continue
+              if yesno("警告 - "+i,"为防止解包payload.bin影响其他分区，所有已解包文件将被删除。\\n就算这样也要继续吗？")!=CHOICE_OK:
+                continue
+              infobox(i,"正在清空 target")
+              cleartarget()
+              infobox(i,"正在重置分区大小")
+              sizetable={}
+              infobox(i,"完成")
               infobox(i,"正在列出分区...")
               a=payload_partitions("base/"+i)
               p=[
@@ -413,7 +455,9 @@ def rom():
                   c=gettype("temp/"+g)
                   if c.startswith("Android sparse image") or c.startswith("Android bootimg") or c.startswith("Linux rev 1.0 ext2 filesystem data"):
                     progress(i+"->"+g,"正在执行 unpackimg [1/1]",50)
-                    unpackimg("temp/{0}".format(g),"target/{0}".format(g.split(".")[0]))
+                    sizetable[i.split(".")[0]]=[]
+                    sizetable[i.split(".")[0]].append(unpackimg("temp/{0}".format(g),"target/{0}".format(g.split(".")[0])))
+                    sizetable[i.split(".")[0]].append(gettype("temp/{0}".format(g)).split(",")[1][6:])
                     progress(i+"->"+g,"正在执行 unpackimg [1/1]",100)
                     os.remove("temp/{0}".format(g))
                     progress(i+"->"+g,"过程完成",100)
@@ -426,6 +470,8 @@ def rom():
             else:
               fail=True
               break
+          with open("target/size.json","w") as f:
+            f.write(json.dumps(sizetable))
           if fail:
             msg("DNAnother","转换失败。\\n已转换成功的将被保留。")
           else:
@@ -450,10 +496,15 @@ def rom():
         elif file[0]==CHOICE_OK:
           msg("错误","文件不正确。")
       elif ch=='3':
-        infobox("DNAnother","正在预准备")
-        cleartemp()
         if yesno("警告","是否开始打包？\\n操作可能需要5分钟或更久。")==CHOICE_OK:
+          infobox("DNAnother","正在预准备")
+          cleartemp()
           progress("DNAnother","准备中",0)
+          if os.path.exists("target/size.json") and os.path.isfile("target/size.json"):
+            with open("target/size.json") as f:
+              sizetable=json.dumps(f.read())
+          else:
+            sizetable={}
           for i in os.listdir("target"):
             progress(i,"正在检查信息".format(i),0)
             if os.path.isfile("target/"+i):
@@ -461,11 +512,24 @@ def rom():
               os.system("cp target/"+i+" temp/")
             elif os.path.exists("target/"+i+"/bootimg.cfg"):
               progress(i,"正在执行 packimg [1/1]".format(i),100)
-              packimg("target/{0}".format(i),"temp/{0}.img".format(i))
+              packimg("target/{0}".format(i),"temp/{0}.img".format(i),0,"11451419-1981-0364-3648-93893fffffff")
               progress(i,"完成".format(i),100)
             else:
               progress(i,"正在执行 packimg [1/3]".format(i),round(1/6*100))
-              packimg("target/{0}".format(i),"temp/{0}.img".format(i),True)
+              if type(sizetable[i])!=list or len(sizetable[i])!=2 or type(sizetable[i][0])!=int or sizetable[i][0]<0 or type(sizetable[i][1])!=str or len(sizetable[i][1])!=32:
+                while 1:
+                  s=inputbox(i,"分区信息缺失。\\n请手动输入分区大小和UUID，以空格分割。")
+                  if s[0]!=CHOICE_OK:
+                    if yesno(i,"确实要取消打包操作吗？")==CHOICE_OK:
+                      cleartemp()
+                      fail=True
+                  elif s[1].split(" ")[0].isdigit() and int(s[1].split(" ")[0])>=0 and len(s[1].split(" ")[1])==36:
+                    infobox(i,"正在处理数据...")
+                    packimg("target/{0}".format(i),"temp/{0}.img".format(i),int(s[1].split(" ")[0]),s[1].split(" ")[1],True)
+                  else:
+                    msg("数据不合法。")
+              else:
+                packimg("target/{0}".format(i),"temp/{0}.img".format(i),sizetable[i][0],sizetable[i][1],True)
               progress(i,"正在执行 img2dat [2/3]".format(i),round(2/6*100))
               img2dat("temp/{0}.img".format(i),"temp",i)
               progress(i,"正在执行 img2dat [2/3]".format(i),round(3/6*100))
@@ -592,4 +656,6 @@ while 1:
   elif project_path[1]=='' and (project_path[0]==CHOICE_NO or project_path[0]==CHOICE_EXIT):
     exitmenu()
   else:
-    msg("错误","无法访问这个文件夹。")
+    if yesno("错误","无法访问这个文件夹。","确定","遇到bug")!=CHOICE_OK:
+      msg("抱歉","正在为您退出程序。\\n遇到bug的情况，请向开发团队反馈bug。\\n谢谢。")
+      exitmenu()
